@@ -22,10 +22,11 @@ const Example = "s3-presign://get@my-bucket/path/to/object"
 var Regex = regexp.MustCompile(`s3-presign://[a-zA-Z0-9\@\-\_\/\?\=\#\%\.\~\+]+`)
 
 func NewMinioClient() (*minio.Client, error) {
-	endpoint := os.Getenv("AWS_S3_ENDPOINT")
+	endpoint := os.Getenv("S3_ENDPOINT")
 	if endpoint == "" {
-		return nil, errors.New("required env var: AWS_S3_ENDPOINT")
+		return nil, errors.New("required env var: S3_ENDPOINT")
 	}
+	region := os.Getenv("S3_REGION")
 	accessKeyId := os.Getenv("AWS_ACCESS_KEY_ID")
 	if accessKeyId == "" {
 		return nil, errors.New("required env var: AWS_ACCESS_KEY_ID")
@@ -35,9 +36,19 @@ func NewMinioClient() (*minio.Client, error) {
 		return nil, errors.New("required env var: AWS_SECRET_ACCESS_KEY")
 	}
 
+	secure := true
+	if strings.HasPrefix(endpoint, "https://") {
+		secure = true
+		endpoint = endpoint[len("https://"):]
+	} else if strings.HasPrefix(endpoint, "http://") {
+		secure = false
+		endpoint = endpoint[len("http://"):]
+	}
+
 	minioClient, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyId, secretAccessKey, ""),
-		Secure: true,
+		Secure: secure,
+		Region: region,
 	})
 	if err != nil {
 		return nil, err
