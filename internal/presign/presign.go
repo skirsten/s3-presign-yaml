@@ -57,44 +57,56 @@ func NewMinioClient() (*minio.Client, error) {
 	return minioClient, nil
 }
 
-func Presign(mc *minio.Client, url *url.URL) (string, error) {
+func Presign(mc *minio.Client, u *url.URL) (string, error) {
 	// [scheme:][//[userinfo@]host][/]path[?query][#fragment]
 
-	if url.Scheme != Scheme {
-		return "", fmt.Errorf("unsupported scheme: %s", url.Scheme)
+	if u.Scheme != Scheme {
+		return "", fmt.Errorf("unsupported scheme: %s", u.Scheme)
 	}
 
-	method := strings.ToUpper(url.User.Username())
-	bucketName := url.Host
-	objectName := url.Path[1:]
-	duration := 1 * time.Hour
+	method := strings.ToUpper(u.User.Username())
+	endpoint, _ := u.User.Password()
+	bucketName := u.Host
+	objectName := u.Path[1:]
+	expires := 1 * time.Hour
 
 	if method == "" {
 		method = "GET"
 	}
 
-	if url.Fragment != "" {
-		_duration, err := time.ParseDuration(url.Fragment)
+	query, err := url.ParseQuery(u.Fragment)
+	if err != nil {
+		return "", err
+	}
+
+	if value := query.Get("expires"); value != "" {
+		_expires, err := time.ParseDuration(value)
 		if err != nil {
 			return "", err
 		}
-		duration = _duration
+		expires = _expires
 	}
 
 	if bucketName == "" {
 		return "", fmt.Errorf("bucket name needs to be defined e.g. %s", Example)
 	}
 
-	err := s3utils.CheckValidObjectName(objectName)
+	err = s3utils.CheckValidObjectName(objectName)
 	if err != nil {
 		return "", err
 	}
 
 	ctx := context.Background()
-	url, err = mc.Presign(ctx, method, bucketName, objectName, duration, url.Query())
+	u, err = mc.Presign(ctx, method, bucketName, objectName, expires, u.Query())
 	if err != nil {
 		return "", err
 	}
 
-	return url.String(), nil
+	response := u.String()
+
+	if endpoint != "" {
+		response = endpoint + response[len(u.Scheme)+2:]
+	}
+
+	return response, nil
 }

@@ -11,7 +11,8 @@ c:
 ```
 
 ```sh
-go install github.com/skirsten/s3-presign-yaml@latest
+go install github.com/skirsten/s3-presign-yaml/cmd/s3-presign-yaml@latest
+go install github.com/skirsten/s3-presign-yaml/cmd/s3-presign-text@latest
 
 export AWS_S3_ENDPOINT="..."
 export AWS_ACCESS_KEY_ID="..."
